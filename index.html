@@ -128,10 +128,43 @@ details.admin[open]>summary{border-bottom:1px solid var(--line2)}
 @media print{
   @page{size:A4;margin:8mm}
   html,body{background:#fff}
-  .top,#app{display:none !important}
-  #print-area{display:flex !important;flex-wrap:wrap;gap:2.5mm;align-content:flex-start}
+  .top,.noprint{display:none !important}
+  body.pl #app{display:none !important}
+  body.pl #print-area{display:flex !important;flex-wrap:wrap;gap:2.5mm;align-content:flex-start}
+  .plan-wrap{max-width:none;padding:0}
+  .mx{max-height:none !important;overflow:visible !important}
+  .mx table{font-size:9pt}
+  .mcal{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+  .mon{break-inside:avoid}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+/* plan */
+.fy-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.fy{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer}
+.fy[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:-1px}
+.fy .y{font-size:13px;font-weight:600;color:var(--muted)} .fy .n{font-size:28px;font-weight:700;line-height:1.2} .fy .c{font-size:12.5px;color:var(--muted)}
+.mcal{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.mon{background:#fff;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-height:96px}
+.mon h3{margin:0;padding:9px 12px;font-size:14px;border-bottom:1px solid var(--line2);display:flex;justify-content:space-between}
+.mon h3 span{color:var(--muted);font-weight:500}
+.mon ul{list-style:none;margin:0;padding:4px 0}
+.mon li{padding:5px 12px;font-size:13px;line-height:1.4;display:flex;gap:8px;align-items:baseline;cursor:pointer}
+.mon li:hover{background:#F8FAFB}
+.mon .none{padding:10px 12px;font-size:12.5px;color:#9AA6B2}
+.mon.cur{border-color:var(--blue)} .mon.cur h3{color:var(--blue)}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:4px;white-space:nowrap}
+.t-over{background:var(--bad);color:#fff} .t-nodata{background:var(--gray-l);color:var(--ink2)} .t-cal{background:var(--blue-l);color:var(--blue)}
+.mx{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:12px;background:#fff}
+.mx table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+.mx th,.mx td{padding:7px 10px;border-bottom:1px solid var(--line2);white-space:nowrap;text-align:center}
+.mx thead th{position:sticky;top:0;background:#E8EDF2;z-index:1;font-weight:600}
+.mx td.l,.mx th.l{text-align:left;white-space:normal;min-width:220px}
+.mx td.id{font-family:var(--mono);font-weight:600;color:var(--blue);text-align:left}
+.mx td.hit{background:#E3F2EA;color:var(--ok);font-weight:600}
+.mx td.over{background:var(--bad);color:#fff;font-weight:600}
+.mx td.nod{background:var(--gray-l);color:var(--ink2)}
+.mx tr.grp td{background:#F3F5F7;font-weight:600;text-align:left}
+.mx tfoot td{font-weight:700;background:#F3F5F7}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;max-width:calc(100% - 32px);z-index:20;font-size:14px}
 .toast.err{background:var(--bad)}
 .loading{padding:40px 0;text-align:center;color:var(--muted)}
@@ -143,6 +176,7 @@ details.admin[open]>summary{border-bottom:1px solid var(--line2)}
   <div class="brand"><span class="k">TOOL CALIBRATION</span><span class="t">ระบบติดตามสถานะการสอบเทียบเครื่องมือวัด</span></div>
   <nav class="nav" aria-label="เมนูหลัก">
     <button type="button" data-nav="home">ภาพรวม</button>
+    <button type="button" data-nav="plan">แผน 5 ปี</button>
     <button type="button" data-nav="labels">พิมพ์ป้าย</button>
   </nav>
 </div></header>
@@ -157,7 +191,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbzsOiBtRfwx4ZlRg8MbIw5Gv3
 
 var QS = new URLSearchParams(location.search);
 var INIT_ID = (QS.get('id') || '').replace(/[^A-Za-z0-9\-\/\.]/g, '').slice(0, 40);
-var INIT_PAGE = QS.get('page') === 'labels' ? 'labels' : '';
+var INIT_PAGE = { labels: 1, plan: 1 }[QS.get('page')] ? QS.get('page') : '';
 function apiUrl() {
   if (API_URL) return API_URL;
   try { return localStorage.getItem('toolcal_api') || ''; } catch (e) { return ''; }
@@ -207,6 +241,7 @@ function route(p) {
   if (p.page === 'edit') return showEdit(p.id ? String(p.id) : '');
   if (p.id) return showTool(String(p.id));
   if (p.page === 'labels') return showLabels();
+  if (p.page === 'plan') return showPlan();
   return showHome();
 }
 function ensureList(force) {
@@ -558,6 +593,122 @@ function retireTool(t) {
   }).catch(fail);
 }
 
+/* ------------------------------------------------------------------ แผน 5 ปี (ปฏิทินการสอบเทียบ) */
+var MONTHS_FY = [9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8]; // ต.ค. → ก.ย.
+var YEARS_AHEAD = 5;
+function isoParts(iso) { var p = iso.split('-'); return [+p[0], +p[1] - 1, +p[2]]; }
+function fyOf(y, m) { return (m >= 9 ? y + 1 : y) + 543; }             // ปีงบประมาณ (พ.ศ.)
+function addMonthsIso(iso, n) {
+  var p = isoParts(iso), d = new Date(p[0], p[1] + n, 1), last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(p[2], last));
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function monthName(m) { return new Date(2000, m, 1).toLocaleDateString('th-TH', { month: 'short' }); }
+/** รายการครบกำหนดของเครื่องมือทุกชิ้นในช่วง 5 ปีงบ — คืน [{t, fy, m (0-11 หรือ null), kind: due|over|nodata|cal}] */
+function buildPlan(list, fy0) {
+  var fyEnd = fy0 + YEARS_AHEAD - 1, ev = [];
+  list.forEach(function (t) {
+    if (t.statusKey === 'ncr') return;
+    if (t.statusKey === 'cal') { ev.push({ t: t, fy: fy0, m: null, kind: 'cal' }); return; }
+    if (!t.next_due) { ev.push({ t: t, fy: fy0, m: null, kind: 'nodata' }); return; }
+    var iso = t.next_due, step = Number(t.cal_interval) || 12, guard = 0;
+    while (guard++ < 200) {
+      var p = isoParts(iso), f = fyOf(p[0], p[1]);
+      if (f > fyEnd) break;
+      if (f < fy0) ev.push({ t: t, fy: fy0, m: null, kind: 'over', date: iso });
+      else ev.push({ t: t, fy: f, m: p[1], kind: iso < S.boot.today ? 'over' : 'due', date: iso });
+      if (f < fy0 || iso < S.boot.today) iso = addMonthsIso(S.boot.today, step); else iso = addMonthsIso(iso, step);
+    }
+  });
+  return ev;
+}
+function showPlan() {
+  setNav('plan');
+  $('#app').innerHTML = '<div class="wrap"><div class="loading">กำลังคำนวณแผน…</div></div>';
+  ensureList().then(renderPlan).catch(fail);
+}
+function renderPlan() {
+  var tp = isoParts(S.boot.today), fy0 = fyOf(tp[0], tp[1]);
+  if (!S.planFy || S.planFy < fy0 || S.planFy > fy0 + YEARS_AHEAD - 1) S.planFy = fy0;
+  S.planView = S.planView || 'cal';
+  var ev = buildPlan(S.list, fy0), years = [];
+  for (var y = fy0; y < fy0 + YEARS_AHEAD; y++) years.push(y);
+  var byFy = {}; years.forEach(function (y) { byFy[y] = ev.filter(function (e) { return e.fy === y; }); });
+  var cost = function (arr) { var s = 0, miss = 0; arr.forEach(function (e) { var c = Number(e.t.cal_cost); if (c > 0) s += c; else miss++; }); return { s: s, miss: miss }; };
+  var money = function (n) { return n.toLocaleString('th-TH'); };
+  var noData = byFy[fy0].filter(function (e) { return e.kind === 'nodata'; }).length;
+
+  var tiles = years.map(function (y) {
+    var c = cost(byFy[y]);
+    return '<button type="button" class="fy" data-fy="' + y + '" aria-pressed="' + (S.planFy === y && S.planView === 'cal') + '"><div class="y">ปีงบประมาณ ' + y + '</div><div class="n">' + byFy[y].length + ' <span style="font-size:14px;font-weight:500">รายการ</span></div>' +
+      '<div class="c">ค่าสอบเทียบโดยประมาณ ' + (c.s ? money(c.s) + ' บาท' : '—') + (c.miss ? '<br>ไม่มีราคา ' + c.miss + ' รายการ' : '') + '</div></button>';
+  }).join('');
+
+  var body;
+  if (S.planView === 'cal') {
+    var list = byFy[S.planFy];
+    var unsched = list.filter(function (e) { return e.m === null; });
+    var curM = S.planFy === fy0 ? tp[1] : -1;
+    body = '<h2 style="margin:6px 0 2px">ปฏิทินการสอบเทียบ ปีงบประมาณ ' + S.planFy + '</h2><p class="sub" style="margin-bottom:10px">ต.ค. ' + (S.planFy - 1) + ' – ก.ย. ' + S.planFy + ' · กดชื่อเครื่องมือเพื่อดูรายละเอียด</p>' +
+      (unsched.length ? '<div class="mon" style="margin-bottom:10px;border-color:#E6B3AD"><h3>ต้องดำเนินการโดยเร็ว (ยังไม่กำหนดเดือน)<span>' + unsched.length + ' รายการ</span></h3><ul>' + unsched.map(planLi).join('') + '</ul></div>' : '') +
+      '<div class="mcal">' + MONTHS_FY.map(function (m) {
+        var items = list.filter(function (e) { return e.m === m; });
+        var yr = (m >= 9 ? S.planFy - 1 : S.planFy);
+        return '<div class="mon' + (m === curM ? ' cur' : '') + '"><h3>' + monthName(m) + ' ' + String(yr).slice(-2) + '<span>' + (items.length ? items.length + ' รายการ' : '') + '</span></h3>' +
+          (items.length ? '<ul>' + items.map(planLi).join('') + '</ul>' : '<div class="none">ไม่มีรายการครบกำหนด</div>') + '</div>';
+      }).join('') + '</div>';
+  } else {
+    var tools = S.list.filter(function (t) { return t.statusKey !== 'ncr'; }).slice().sort(function (a, b) { return a.group === b.group ? (a.tool_id < b.tool_id ? -1 : 1) : (a.group < b.group ? -1 : 1); });
+    var lastG = null, rows = '';
+    tools.forEach(function (t) {
+      if (t.group !== lastG) { lastG = t.group; rows += '<tr class="grp"><td colspan="' + (3 + years.length) + '">' + h(t.group) + '</td></tr>'; }
+      rows += '<tr><td class="id">' + h(t.tool_id) + '</td><td class="l">' + h(t.description) + '<div class="sub" style="font-size:12px">S/N ' + h(t.serial_no) + ' · ' + h(t.location) + '</div></td><td>' + (t.cal_interval ? t.cal_interval + ' ด.' : '—') + '</td>' +
+        years.map(function (y) {
+          var es = byFy[y].filter(function (e) { return e.t.tool_id === t.tool_id; });
+          if (!es.length) return '<td></td>';
+          var k = es[0].kind;
+          var txt = es.map(function (e) { return e.m === null ? ({ over: 'เลยกำหนด', nodata: 'รอข้อมูล', cal: 'กำลังสอบเทียบ' }[e.kind]) : monthName(e.m); }).join(', ');
+          return '<td class="' + (k === 'over' ? 'over' : k === 'nodata' || k === 'cal' ? 'nod' : 'hit') + '">' + h(txt) + '</td>';
+        }).join('') + '</tr>';
+    });
+    var foot = '<tr><td colspan="3" style="text-align:right">รวม (รายการ / ค่าสอบเทียบประมาณ)</td>' + years.map(function (y) { var c = cost(byFy[y]); return '<td>' + byFy[y].length + '<br><span style="font-weight:500;font-size:12px">' + (c.s ? money(c.s) + ' ฿' : '—') + '</span></td>'; }).join('') + '</tr>';
+    body = '<h2 style="margin:6px 0 10px">ตารางภาพรวม 5 ปี (ปีงบ ' + fy0 + '–' + (fy0 + YEARS_AHEAD - 1) + ')</h2>' +
+      '<div class="mx"><table><thead><tr><th class="l" style="min-width:70px">Tool ID</th><th class="l">รายการ</th><th>รอบ</th>' + years.map(function (y) { return '<th>ปีงบ ' + String(y).slice(-2) + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody><tfoot>' + foot + '</tfoot></table></div>';
+  }
+
+  $('#app').innerHTML = '<div class="wrap stack plan-wrap">' +
+    '<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h1>แผนการสอบเทียบเครื่องมือ 5 ปี</h1><p class="sub">คำนวณจากวันครบกำหนดครั้งถัดไปและรอบสอบเทียบของเครื่องมือแต่ละชิ้น · ข้อมูล ณ ' + d(S.boot.today) + '</p></div>' +
+    '<div class="row noprint"><div class="seg" role="group" aria-label="มุมมอง"><button type="button" data-view="cal" aria-pressed="' + (S.planView === 'cal') + '">ปฏิทินรายปี</button><button type="button" data-view="mx" aria-pressed="' + (S.planView === 'mx') + '">ตาราง 5 ปี</button></div>' +
+    '<button type="button" class="btn sec" id="p-csv" style="min-height:40px">ดาวน์โหลด CSV</button><button type="button" class="btn sec" id="p-print" style="min-height:40px">พิมพ์</button></div></div>' +
+    (noData ? '<div class="callout gray noprint"><h3>ยังมี ' + noData + ' รายการที่ไม่มีวันที่สอบเทียบ</h3><p style="margin:0">ระบบจัดไว้ในปีงบ ' + fy0 + ' หัวข้อ "ต้องดำเนินการโดยเร็ว" เมื่อบันทึกวันที่สอบเทียบจากใบรับรองแล้ว แผนจะกระจายไปตามเดือนที่ครบกำหนดจริงโดยอัตโนมัติ</p></div>' : '') +
+    '<div class="fy-tiles noprint">' + tiles + '</div>' + body + '</div>';
+
+  document.querySelectorAll('[data-fy]').forEach(function (b) { b.onclick = function () { S.planFy = +b.getAttribute('data-fy'); S.planView = 'cal'; renderPlan(); }; });
+  document.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { S.planView = b.getAttribute('data-view'); renderPlan(); }; });
+  document.querySelectorAll('[data-go]').forEach(function (li) { li.onclick = function () { go({ id: li.getAttribute('data-go') }); }; });
+  $('#p-print').onclick = function () { window.print(); };
+  $('#p-csv').onclick = function () { downloadPlanCsv(ev, years); };
+}
+function planLi(e) {
+  var tag = e.kind === 'over' ? '<span class="tag t-over">เลยกำหนด</span>' : e.kind === 'nodata' ? '<span class="tag t-nodata">รอข้อมูล</span>' : e.kind === 'cal' ? '<span class="tag t-cal">กำลังสอบเทียบ</span>' : '';
+  return '<li data-go="' + h(e.t.tool_id) + '"><span class="mono" style="font-weight:600;color:var(--blue);flex:none">' + h(e.t.tool_id) + '</span><span style="flex:1;min-width:0">' + h(e.t.description) +
+    (e.date && e.kind === 'due' ? ' <span class="sub" style="font-size:12px">· ' + d(e.date, true) + '</span>' : '') + '</span>' + tag + '</li>';
+}
+function downloadPlanCsv(ev, years) {
+  var q = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var rows = [['ปีงบประมาณ', 'เดือน', 'วันครบกำหนด', 'Tool ID', 'ชื่อรายการ', 'รุ่น', 'S/N', 'เลขครุภัณฑ์', 'สถานที่', 'กลุ่มงาน', 'รอบ (เดือน)', 'ราคาสอบเทียบ (บาท)', 'หมายเหตุ']];
+  ev.slice().sort(function (a, b) { return a.fy - b.fy || (a.m === null ? -1 : MONTHS_FY.indexOf(a.m)) - (b.m === null ? -1 : MONTHS_FY.indexOf(b.m)) || (a.t.tool_id < b.t.tool_id ? -1 : 1); })
+    .forEach(function (e) {
+      rows.push([e.fy, e.m === null ? '' : monthName(e.m), e.date || '', e.t.tool_id, e.t.description, e.t.model, e.t.serial_no, e.t.asset_no, e.t.location, e.t.group, e.t.cal_interval, e.t.cal_cost,
+        { over: 'เลยกำหนด ต้องสอบเทียบโดยเร็ว', nodata: 'ยังไม่มีข้อมูลการสอบเทียบ', cal: 'อยู่ระหว่างส่งสอบเทียบ', due: '' }[e.kind]]);
+    });
+  var csv = '\ufeff' + rows.map(function (r) { return r.map(q).join(','); }).join('\r\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'แผนสอบเทียบ_ปีงบ' + years[0] + '-' + years[years.length - 1] + '.csv';
+  document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
 /* ------------------------------------------------------------------ หน้าพิมพ์ป้าย */
 function showLabels() {
   setNav('labels');
@@ -591,7 +742,8 @@ function renderLabels() {
     var html = labelsHtml();
     if (!html) { toast('กรุณาเลือกเครื่องมืออย่างน้อย 1 รายการ', true); return; }
     $('#print-area').innerHTML = html;
-    setTimeout(function () { window.print(); }, 50);
+    document.body.classList.add('pl');
+    setTimeout(function () { window.print(); setTimeout(function () { document.body.classList.remove('pl'); }, 500); }, 50);
   };
   preview();
 }
@@ -637,7 +789,7 @@ function labelsHtml() {
 /* ------------------------------------------------------------------ เริ่มต้น */
 function fail(err) { console.error(err); toast((err && err.message) || 'เกิดข้อผิดพลาด', true); }
 document.querySelectorAll('[data-nav]').forEach(function (b) {
-  b.onclick = function () { var p = b.getAttribute('data-nav'); go(p === 'labels' ? { page: 'labels' } : {}); };
+  b.onclick = function () { var p = b.getAttribute('data-nav'); go(p === 'home' ? {} : { page: p }); };
 });
 window.addEventListener('popstate', function (e) {
   var q = new URLSearchParams(location.search);
