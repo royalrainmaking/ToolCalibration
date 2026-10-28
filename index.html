@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<title>ระบบติดตามสถานะการสอบเทียบเครื่องมือวัด</title>
+<meta name="robots" content="noindex">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+:root{
+  --ink:#13202E; --ink2:#3A4652; --muted:#4A5866; --line:#D9DEE3; --line2:#ECEFF2; --bg:#F3F5F7; --card:#FFFFFF;
+  --blue:#1C4E80; --blue-d:#123659; --blue-l:#E3ECF6;
+  --ok:#1E6B45; --ok-l:#E3F2EA; --warn:#8A5300; --warn-l:#FDF0D9; --bad:#A8261B; --bad-l:#FBE6E3; --gray-l:#ECEFF2;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Thai',system-ui,sans-serif;font-size:15px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--blue)} a:hover{color:var(--blue-d)}
+.mono{font-family:var(--mono)}
+.top{background:var(--ink);color:#fff;position:sticky;top:0;z-index:5}
+.top-in{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.25;margin-right:auto}
+.brand .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:#9CC3EA}
+.brand .t{font-size:15px;font-weight:600}
+.nav{display:flex;gap:6px}
+.nav button{min-height:40px;padding:0 14px;border-radius:8px;border:1px solid #3B5470;background:transparent;color:#DCE4EB;cursor:pointer}
+.nav button[aria-current="page"]{background:#fff;color:var(--ink);border-color:#fff;font-weight:600}
+.wrap{max-width:1080px;margin:0 auto;padding:18px 16px 40px}
+.narrow{max-width:560px}
+h1{font-size:24px;margin:0 0 4px;line-height:1.3}
+h2{font-size:17px;margin:0 0 10px}
+.sub{color:var(--muted);font-size:13.5px;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.pad{padding:14px 16px}
+.btn{min-height:46px;padding:0 18px;border-radius:10px;border:0;background:var(--blue);color:#fff;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--blue-d)}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid #C3CBD3;font-weight:500}
+.btn.danger{background:var(--bad)}
+.btn[disabled]{opacity:.55;cursor:wait}
+.btn.block{width:100%}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--ink2);font-weight:500}
+.in{min-height:44px;border:1px solid #C3CBD3;border-radius:10px;padding:0 12px;background:#fff;width:100%}
+textarea.in{padding:10px 12px;min-height:70px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.grid2{grid-template-columns:1fr}}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-block;padding:3px 10px;border-radius:6px;font-weight:600;font-size:12.5px;white-space:nowrap}
+.s-ok{background:var(--ok-l);color:var(--ok)} .s-warn{background:var(--warn-l);color:var(--warn)}
+.s-bad,.s-expired{background:var(--bad);color:#fff} .s-cal{background:var(--blue-l);color:var(--blue)}
+.s-unknown,.s-ncr{background:var(--gray-l);color:var(--ink2)}
+.dot{width:10px;height:10px;border-radius:5px;flex:none}
+.d-ok{background:var(--ok)} .d-warn{background:#C27A00} .d-bad,.d-expired{background:var(--bad)} .d-cal{background:var(--blue)} .d-unknown,.d-ncr{background:#9AA6B2}
+/* home */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0}
+.tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer}
+.tile .n{font-size:28px;font-weight:700;line-height:1.2}
+.tile .l{font-size:13px;font-weight:600}
+.tile[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:-1px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.filters .in{width:auto;flex:1 1 220px}
+.filters select.in{flex:0 1 200px}
+.list{display:flex;flex-direction:column}
+.item{display:flex;gap:12px;align-items:center;padding:11px 14px;border:0;border-top:1px solid var(--line2);background:#fff;text-align:left;cursor:pointer;width:100%}
+.item:first-child{border-top:0}
+.item:hover{background:#F8FAFB}
+.item .main{flex:1;min-width:0}
+.item .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .meta{font-size:12.5px;color:var(--muted)}
+.item .rt{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.item .due{font-size:12px;color:var(--muted)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.thumb{position:relative;width:52px;height:52px;border-radius:10px;background:#ECEFF2;flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#3A4652}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .dot{position:absolute;right:3px;bottom:3px;border:2px solid #fff;width:13px;height:13px;border-radius:7px}
+.photo{border-radius:12px;background:#ECEFF2;overflow:hidden;display:flex;align-items:center;justify-content:center;aspect-ratio:4/3;color:#3A4652}
+.photo img{width:100%;height:100%;object-fit:contain;background:#fff;display:block}
+.photo .ph{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.photo.none{aspect-ratio:auto;height:120px}
+.filebtn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border-radius:10px;border:1px dashed #9AA6B2;background:#fff;cursor:pointer;font-weight:500}
+.filebtn input{position:absolute;width:1px;height:1px;opacity:0}
+/* tool */
+.hero{border-radius:14px;color:#fff;padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px}
+.h-ok{background:var(--ok)} .h-warn{background:var(--warn)} .h-bad,.h-expired{background:var(--bad)} .h-cal{background:var(--blue)} .h-unknown{background:#4A5866} .h-ncr{background:#3A4652}
+.hero .ic{width:52px;height:52px;border-radius:26px;background:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.hero .big{font-size:42px;font-weight:700;line-height:1}
+.hero .lbl{font-size:24px;font-weight:700;line-height:1.25}
+.hero .en{font-family:var(--mono);font-size:12px;letter-spacing:.08em;opacity:.85}
+.bar{height:8px;border-radius:4px;background:rgba(255,255,255,.3);overflow:hidden}
+.bar>i{display:block;height:8px;background:#fff}
+.kv{display:flex;flex-direction:column}
+.kv>div{display:flex;justify-content:space-between;gap:14px;padding:9px 16px;border-top:1px solid var(--line2);font-size:14px}
+.kv>div:first-child{border-top:0}
+.kv .k{color:var(--muted);flex:none}
+.kv .v{text-align:right;font-weight:500;word-break:break-word}
+.callout{background:var(--bad-l);border-radius:12px;padding:14px 16px}
+.callout h3{margin:0 0 6px;font-size:15px;color:#7E1C13}
+.callout ol{margin:0;padding-left:20px}
+.callout.gray{background:var(--gray-l)} .callout.gray h3{color:var(--ink)}
+details.admin{border:1px dashed #9AA6B2;border-radius:12px;background:#fff}
+details.admin>summary{cursor:pointer;padding:14px 16px;font-weight:600;min-height:44px;list-style:none}
+details.admin>summary::-webkit-details-marker{display:none}
+details.admin[open]>summary{border-bottom:1px solid var(--line2)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{min-height:40px;padding:0 12px;border-radius:8px;border:1px solid #C3CBD3;background:#fff;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.hist{display:flex;flex-direction:column}
+.hist>div{padding:10px 16px;border-top:1px solid var(--line2);font-size:13.5px;display:flex;justify-content:space-between;gap:10px}
+.hist>div:first-child{border-top:0}
+/* labels */
+.lab-sel{max-height:420px;overflow:auto}
+.lab-sel label{display:flex;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid var(--line2);cursor:pointer;min-height:44px}
+.lab-sel input{width:18px;height:18px}
+.sheet{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6mm;display:flex;flex-wrap:wrap;gap:2.5mm;align-content:flex-start}
+.lbl-a{border:.2mm solid #13202E;border-radius:1.5mm;display:flex;align-items:center;gap:1.4mm;padding:1mm 1.6mm 1mm 1mm;background:#fff;break-inside:avoid}
+.lbl-a .qr{display:block}
+.lbl-a .id{font-family:var(--mono);font-weight:600;font-size:8.5pt;line-height:1.05;white-space:nowrap}
+.lbl-a .o{font-family:var(--mono);font-size:4.6pt;color:#3A4652;white-space:nowrap;letter-spacing:.02em}
+.lbl-a .s{font-size:4.6pt;color:#3A4652;white-space:nowrap}
+.lbl-b{width:25mm;height:12mm;border:.2mm solid #13202E;border-radius:1.2mm;overflow:hidden;display:flex;flex-direction:column;background:#fff;break-inside:avoid}
+.lbl-b .band{height:3.2mm;background:#1E6B45;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 1mm;font-family:var(--mono);font-weight:600;font-size:4.4pt}
+.lbl-b .due{font-weight:700;font-size:7pt;line-height:1.2;padding:.5mm 1mm 0}
+.lbl-b .cal{font-size:4.4pt;color:#3A4652;padding:0 1mm}
+#print-area{display:none}
+@media print{
+  @page{size:A4;margin:8mm}
+  html,body{background:#fff}
+  .top,#app{display:none !important}
+  #print-area{display:flex !important;flex-wrap:wrap;gap:2.5mm;align-content:flex-start}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;max-width:calc(100% - 32px);z-index:20;font-size:14px}
+.toast.err{background:var(--bad)}
+.loading{padding:40px 0;text-align:center;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="brand"><span class="k">TOOL CALIBRATION</span><span class="t">ระบบติดตามสถานะการสอบเทียบเครื่องมือวัด</span></div>
+  <nav class="nav" aria-label="เมนูหลัก">
+    <button type="button" data-nav="home">ภาพรวม</button>
+    <button type="button" data-nav="labels">พิมพ์ป้าย</button>
+  </nav>
+</div></header>
+<main id="app"><div class="loading">กำลังโหลดข้อมูล…</div></main>
+<div id="print-area"></div>
+
+<script>
+/* ===================== ตั้งค่า =====================
+ * ใส่ลิงก์ Apps Script Web App (ลงท้ายด้วย /exec) ที่ได้จากการ Deploy ในชีตฐานข้อมูล */
+var API_URL = 'https://script.google.com/macros/s/AKfycbzsOiBtRfwx4ZlRg8MbIw5Gv3lo9InHDskCyRSfvJsELS9bxhVoUaaLEVIATrM4OtzJ/exec';
+/* ================================================== */
+
+var QS = new URLSearchParams(location.search);
+var INIT_ID = (QS.get('id') || '').replace(/[^A-Za-z0-9\-\/\.]/g, '').slice(0, 40);
+var INIT_PAGE = QS.get('page') === 'labels' ? 'labels' : '';
+function apiUrl() {
+  if (API_URL) return API_URL;
+  try { return localStorage.getItem('toolcal_api') || ''; } catch (e) { return ''; }
+}
+
+var S = { boot: null, list: null, filter: 'all', q: '', group: '', loc: '', pin: '', sel: {}, labelMode: 'A' };
+var EN = { ok: 'SERVICEABLE', warn: 'DUE SOON', expired: 'CAL OVERDUE', bad: 'UNSERVICEABLE', cal: 'IN CALIBRATION', unknown: 'NO CAL DATA', ncr: 'NO CAL REQUIRED' };
+var BUCKET = { ok: 'ok', warn: 'warn', expired: 'bad', bad: 'bad', cal: 'cal', unknown: 'unknown', ncr: 'ok' };
+
+var READS = { apiBoot: 1, apiList: 1, apiGetTool: 1 };
+function call(fn) {
+  var args = Array.prototype.slice.call(arguments, 1), url = apiUrl();
+  if (!url) return Promise.reject(new Error('ยังไม่ได้ตั้งค่าลิงก์ API'));
+  var req = READS[fn]
+    ? fetch(url + '?fn=' + fn + (fn === 'apiGetTool' ? '&id=' + encodeURIComponent(args[0] || '') : ''), { redirect: 'follow' })
+    : fetch(url, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args }) });
+  return req.then(function (r) {
+    if (!r.ok) throw new Error('เชื่อมต่อฐานข้อมูลไม่สำเร็จ (' + r.status + ')');
+    return r.json();
+  }, function () { throw new Error('เชื่อมต่อฐานข้อมูลไม่ได้ ตรวจสอบอินเทอร์เน็ตหรือลิงก์ API'); })
+    .then(function (j) { if (!j || !j.ok) throw new Error((j && j.error) || 'เกิดข้อผิดพลาด'); return j.data; });
+}
+function h(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function d(iso, short) {
+  if (!iso) return '—';
+  var p = iso.split('-'); var dt = new Date(+p[0], +p[1] - 1, +p[2]);
+  return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: short ? '2-digit' : 'numeric' });
+}
+function toast(msg, err) {
+  var t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(function () { t.remove(); }, err ? 5000 : 2600);
+}
+function $(sel, root) { return (root || document).querySelector(sel); }
+function setNav(page) {
+  document.querySelectorAll('[data-nav]').forEach(function (b) {
+    if (b.getAttribute('data-nav') === page) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+}
+function go(params) {
+  var q = params.page === 'edit' ? '?page=edit' + (params.id ? '&id=' + encodeURIComponent(params.id) : '') :
+    params.id ? '?id=' + encodeURIComponent(params.id) : (params.page ? '?page=' + params.page : '');
+  try { history.pushState(params, '', location.pathname + q); } catch (e) {}
+  route(params);
+}
+function route(p) {
+  p = p || {};
+  if (p.page === 'edit') return showEdit(p.id ? String(p.id) : '');
+  if (p.id) return showTool(String(p.id));
+  if (p.page === 'labels') return showLabels();
+  return showHome();
+}
+function ensureList(force) {
+  if (S.list && !force) return Promise.resolve(S.list);
+  return call('apiList').then(function (l) { S.list = l; return l; });
+}
+
+/* ------------------------------------------------------------------ หน้าภาพรวม */
+function showHome() {
+  setNav('home');
+  var app = $('#app');
+  if (!S.list) app.innerHTML = '<div class="loading">กำลังโหลดข้อมูล…</div>';
+  ensureList().then(renderHome).catch(fail);
+}
+function counts(list) {
+  var c = { all: list.length, ok: 0, warn: 0, bad: 0, cal: 0, unknown: 0 };
+  list.forEach(function (t) { c[BUCKET[t.statusKey]]++; });
+  return c;
+}
+function renderHome() {
+  var list = S.list, c = counts(list);
+  var groups = uniq(list.map(function (t) { return t.group; })), locs = uniq(list.map(function (t) { return t.location; }));
+  var tiles = [['all', 'เครื่องมือทั้งหมด', 'var(--ink)'], ['bad', 'ห้ามใช้ / หมดอายุ', 'var(--bad)'], ['warn', 'ใกล้ครบกำหนด', 'var(--warn)'],
+    ['ok', 'พร้อมใช้งาน', 'var(--ok)'], ['cal', 'ระหว่างสอบเทียบ', 'var(--blue)'], ['unknown', 'รอข้อมูลสอบเทียบ', 'var(--muted)']];
+  $('#app').innerHTML =
+    '<div class="wrap">' +
+    '<h1>ภาพรวมสถานะเครื่องมือวัด</h1><p class="sub">' + h(S.boot.org) + ' · ข้อมูล ณ ' + d(S.boot.today) + '</p>' +
+    '<div class="tiles">' + tiles.map(function (t) {
+      return '<button type="button" class="tile" data-f="' + t[0] + '" aria-pressed="' + (S.filter === t[0]) + '"><div class="l" style="color:' + t[2] + '">' + t[1] + '</div><div class="n">' + c[t[0]] + '</div></button>';
+    }).join('') + '</div>' +
+    '<div class="filters">' +
+    '<label class="sr" for="q">ค้นหา</label><input id="q" class="in" type="search" placeholder="ค้นหา Tool ID, ชื่อ, S/N, เลขครุภัณฑ์" value="' + h(S.q) + '">' +
+    '<label class="sr" for="fg">กลุ่มงาน</label><select id="fg" class="in"><option value="">ทุกกลุ่มงาน</option>' + groups.map(function (g) { return '<option' + (S.group === g ? ' selected' : '') + '>' + h(g) + '</option>'; }).join('') + '</select>' +
+    '<label class="sr" for="fl">สถานที่</label><select id="fl" class="in"><option value="">ทุกสถานที่</option>' + locs.map(function (g) { return '<option' + (S.loc === g ? ' selected' : '') + '>' + h(g) + '</option>'; }).join('') + '</select>' +
+    '<button type="button" class="btn sec" id="reload">รีเฟรช</button>' +
+    '<button type="button" class="btn" id="add">+ เพิ่มเครื่องมือ</button>' +
+    '</div>' +
+    '<div class="card list" id="list"></div></div>';
+  document.querySelectorAll('.tile').forEach(function (b) { b.onclick = function () { S.filter = b.getAttribute('data-f'); renderHome(); }; });
+  $('#q').oninput = function (e) { S.q = e.target.value; renderList(); };
+  $('#fg').onchange = function (e) { S.group = e.target.value; renderList(); };
+  $('#fl').onchange = function (e) { S.loc = e.target.value; renderList(); };
+  $('#reload').onclick = function () { ensureList(true).then(renderHome).then(function () { toast('อัปเดตข้อมูลแล้ว'); }).catch(fail); };
+  $('#add').onclick = function () { go({ page: 'edit' }); };
+  renderList();
+}
+function filtered() {
+  var q = S.q.trim().toLowerCase();
+  var order = { bad: 0, expired: 0, warn: 1, cal: 2, unknown: 3, ok: 4, ncr: 5 };
+  return S.list.filter(function (t) {
+    if (S.filter !== 'all' && BUCKET[t.statusKey] !== S.filter) return false;
+    if (S.group && t.group !== S.group) return false;
+    if (S.loc && t.location !== S.loc) return false;
+    if (!q) return true;
+    var hay = [t.tool_id, t.description, t.serial_no, t.asset_no, t.model, t.part_no].join(' ').toLowerCase();
+    return q.split(/\s+/).every(function (w) { return hay.indexOf(w) >= 0; });
+  }).sort(function (a, b) {
+    return (order[a.statusKey] - order[b.statusKey]) || ((a.daysLeft == null ? 1e9 : a.daysLeft) - (b.daysLeft == null ? 1e9 : b.daysLeft)) || (a.tool_id < b.tool_id ? -1 : 1);
+  });
+}
+function dueText(t) {
+  if (t.daysLeft == null) return t.statusKey === 'ncr' ? '' : 'ไม่มีวันครบกำหนด';
+  if (t.daysLeft < 0) return 'เลยกำหนด ' + (-t.daysLeft) + ' วัน';
+  return 'ครบกำหนด ' + d(t.next_due, true) + ' · เหลือ ' + t.daysLeft + ' วัน';
+}
+function renderList() {
+  var rows = filtered(), el = $('#list');
+  if (!rows.length) { el.innerHTML = '<div class="empty">ไม่พบรายการที่ตรงกับเงื่อนไข</div>'; return; }
+  el.innerHTML = rows.map(function (t) {
+    return '<button type="button" class="item" data-id="' + h(t.tool_id) + '">' +
+      thumbHtml(t) +
+      '<span class="main"><div class="nm">' + h(t.description) + '</div><div class="meta"><span class="mono" style="color:var(--blue);font-weight:600">' + h(t.tool_id) + '</span> · S/N ' + h(t.serial_no) + ' · ' + h(t.location) + '</div></span>' +
+      '<span class="rt"><span class="pill s-' + t.statusKey + '">' + h(shortLabel(t)) + '</span><span class="due">' + h(dueText(t)) + '</span></span></button>';
+  }).join('');
+  el.querySelectorAll('.item').forEach(function (b) { b.onclick = function () { go({ id: b.getAttribute('data-id') }); }; });
+}
+function shortLabel(t) {
+  return { ok: 'พร้อมใช้งาน', warn: 'ใกล้ครบกำหนด', expired: 'หมดอายุ', bad: 'ห้ามใช้งาน', cal: 'ระหว่างสอบเทียบ', unknown: 'รอข้อมูล', ncr: 'NCR' }[t.statusKey];
+}
+/* ประเภทเครื่องมือ → ไอคอน (ใช้แทนรูปเมื่อยังไม่มีรูปจริง) */
+var CAT_ICON = {
+  wrench: '<path d="M4 20l9-9"/><path d="M14.5 3.5a4.5 4.5 0 0 0 6 6l-2.5.5-1.5 1.5-4-4L14 6z"/><path d="M3 21l2-2"/>',
+  gauge: '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-4"/><path d="M8 17h8"/><path d="M12 3v2"/>',
+  pack: '<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5h8v2"/><circle cx="12" cy="13" r="3"/>',
+  testset: '<rect x="3" y="4" width="18" height="14" rx="2"/><rect x="6" y="7" width="8" height="6" rx="1"/><path d="M17 8h1M17 11h1M7 21h10"/>',
+  vib: '<path d="M2 12h3l2-6 3 12 3-9 2 5 2-2h5"/>',
+  rig: '<path d="M12 3v6"/><path d="M8 9h8l-1.5 5h-5z"/><path d="M10 17c0 1.5 1 3 2 4 1-1 2-2.5 2-4"/>',
+  other: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>'
+};
+function category(t) {
+  var s = (t.description + ' ' + t.model).toUpperCase();
+  if (/TORQUEMETER/.test(s)) return 'gauge';
+  if (/TORQUE PACK|POWER-DYNE/.test(s)) return 'pack';
+  if (/TORQUE WRENCH/.test(s)) return 'wrench';
+  if (/TEST SET|GENERATOR|TESTER/.test(s)) return 'testset';
+  if (/CADU|DAU|สั่น|VIBRA/.test(s)) return 'vib';
+  if (/RIG|NOZZLE|หัวฉีด/.test(s)) return 'rig';
+  return 'other';
+}
+function catIcon(t, px) {
+  return '<svg aria-hidden="true" width="' + px + '" height="' + px + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + CAT_ICON[category(t)] + '</svg>';
+}
+function thumbHtml(t) {
+  var inner = t.photo ? '<img src="' + h(t.photo) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '';
+  return '<span class="thumb">' + catIcon(t, 26) + (inner ? '<span style="position:absolute;inset:0">' + inner + '</span>' : '') + '<span class="dot d-' + t.statusKey + '"></span></span>';
+}
+function resizeImage(file, max) {
+  return new Promise(function (res, rej) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = function () { rej(new Error('เปิดไฟล์รูปไม่ได้')); };
+    img.src = url;
+  });
+}
+function uniq(a) { return a.filter(function (x, i) { return x && a.indexOf(x) === i; }).sort(); }
+
+/* ------------------------------------------------------------------ หน้าเครื่องมือ (ผลการสแกน) */
+function showTool(id) {
+  setNav('');
+  $('#app').innerHTML = '<div class="wrap narrow"><div class="loading">กำลังตรวจสอบ ' + h(id) + '…</div></div>';
+  window.scrollTo(0, 0);
+  call('apiGetTool', id).then(function (t) {
+    if (!t) {
+      $('#app').innerHTML = '<div class="wrap narrow stack"><div class="callout"><h3>ไม่พบเครื่องมือ “' + h(id) + '”</h3>' +
+        '<p style="margin:0">ตรวจสอบรหัสบนป้ายอีกครั้ง หรือแจ้งผู้ควบคุมเครื่องมือ</p></div>' +
+        '<button type="button" class="btn sec" id="back">กลับหน้าภาพรวม</button></div>';
+      $('#back').onclick = function () { go({}); };
+      return;
+    }
+    renderTool(t);
+  }).catch(fail);
+}
+function heroIcon(k) {
+  var col = { ok: '#1E6B45', warn: '#8A5300', cal: '#1C4E80', unknown: '#4A5866', ncr: '#3A4652' }[k] || '#A8261B';
+  var path = k === 'ok' || k === 'ncr' ? '<path d="M5 12.5l4.5 4.5L19 7.5"/>' :
+    k === 'warn' ? '<path d="M12 7v6M12 17h.01"/>' :
+    k === 'cal' ? '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/>' :
+    k === 'unknown' ? '<path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/>' :
+    '<circle cx="12" cy="12" r="8"/><path d="M6.5 17.5l11-11"/>';
+  return '<div class="ic"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="' + col + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">' + path + '</svg></div>';
+}
+function renderTool(t) {
+  var k = t.statusKey, big = '', bigTxt = '';
+  if (t.daysLeft != null && (k === 'ok' || k === 'warn')) { big = t.daysLeft; bigTxt = 'วันก่อนครบกำหนดสอบเทียบ'; }
+  else if (k === 'expired') { big = -t.daysLeft; bigTxt = 'วัน เลยกำหนดสอบเทียบ'; }
+  var pct = 0;
+  if (t.last_cal && t.next_due && (k === 'ok' || k === 'warn')) {
+    var a = new Date(t.last_cal), b = new Date(t.next_due), n = new Date(S.boot.today);
+    pct = Math.max(0, Math.min(100, Math.round((n - a) / (b - a) * 100)));
+  }
+  var hero = '<section class="hero h-' + k + '" aria-live="polite">' +
+    '<div class="row" style="gap:14px;flex-wrap:nowrap">' + heroIcon(k) + '<div><div class="lbl">' + h(t.statusLabel) + '</div><div class="en">' + EN[k] + '</div></div></div>' +
+    (big !== '' ? '<div class="row" style="align-items:baseline"><span class="big">' + big + '</span><span>' + bigTxt + '</span></div>' : '') +
+    (pct || (t.last_cal && t.next_due && (k === 'ok' || k === 'warn')) ? '<div><div class="bar"><i style="width:' + pct + '%"></i></div><div class="row" style="justify-content:space-between;font-size:12.5px;margin-top:5px;opacity:.9"><span>สอบเทียบ ' + d(t.last_cal, true) + '</span><span>ครบกำหนด ' + d(t.next_due, true) + '</span></div></div>' :
+      (t.next_due ? '<div style="font-size:13.5px;opacity:.95">ครบกำหนด ' + d(t.next_due) + (t.last_cal ? ' · สอบเทียบล่าสุด ' + d(t.last_cal) : '') + '</div>' : '')) +
+    '</section>';
+
+  var action = '';
+  if (k === 'expired' || k === 'bad') {
+    action = '<div class="callout"><h3>ต้องทำทันที</h3><ol><li>หยุดใช้ และแยกเก็บออกจากชั้นเครื่องมือที่ใช้งาน</li><li>ติดป้าย “ห้ามใช้งาน” (Unserviceable)</li><li>แจ้งผู้ควบคุมเครื่องมือเพื่อส่งซ่อมหรือส่งสอบเทียบ</li></ol></div>';
+  } else if (k === 'unknown') {
+    action = '<div class="callout gray"><h3>ยังไม่มีข้อมูลการสอบเทียบในระบบ</h3><p style="margin:0">ห้ามใช้งานจนกว่าจะยืนยันได้ว่าเครื่องมืออยู่ในอายุการสอบเทียบ ตรวจสอบป้ายหรือใบรับรองเดิม แล้วแจ้งผู้ควบคุมเครื่องมือให้บันทึกข้อมูล</p></div>';
+  } else if (k === 'cal') {
+    action = '<div class="callout gray"><h3>เครื่องมืออยู่ระหว่างส่งสอบเทียบ</h3><p style="margin:0">ห้ามใช้งานจนกว่าจะได้รับใบรับรองและบันทึกผลในระบบ</p></div>';
+  }
+
+  var rows = [['Tool ID', '<span class="mono" style="color:var(--blue);font-weight:600">' + h(t.tool_id) + '</span>'], ['รุ่น', h(t.model)], ['P/N', h(t.part_no)], ['S/N', h(t.serial_no)],
+    ['เลขครุภัณฑ์', h(t.asset_no)], ['สถานที่', h(t.location)], ['กลุ่มงาน', h(t.group)],
+    ['รอบสอบเทียบ', t.cal_interval ? t.cal_interval + ' เดือน' : '—'], ['สอบเทียบล่าสุด', d(t.last_cal)], ['ครบกำหนด', d(t.next_due)],
+    ['ผลครั้งล่าสุด', t.cal_result ? '<span style="color:' + (t.cal_result === 'ผ่าน' ? 'var(--ok)' : 'var(--bad)') + ';font-weight:600">' + h(t.cal_result) + '</span>' : '—'],
+    ['ใบรับรอง', t.cert_link ? '<a href="' + h(t.cert_link) + '" target="_blank" rel="noopener">' + h(t.cert_no || 'เปิดไฟล์') + '</a>' : h(t.cert_no || '—')],
+    ['ห้องปฏิบัติการ', h(t.cal_lab || '—')]];
+  if (t.legacy_plan) rows.push(['แผนเดิม', h(t.legacy_plan)]);
+  if (t.remarks) rows.push(['หมายเหตุ', h(t.remarks).replace(/\n/g, '<br>')]);
+  var photo = '<div class="photo' + (t.photo ? '' : ' none') + '">' + (t.photo ? '<img src="' + h(t.photo) + '" alt="รูป ' + h(t.description) + '" referrerpolicy="no-referrer">' :
+    '<div class="ph">' + catIcon(t, 44) + '<span>ยังไม่มีรูปเครื่องมือ</span></div>') + '</div>';
+  var info = photo + '<div class="card pad stack" style="gap:2px"><div class="mono" style="color:var(--blue);font-weight:600">' + h(t.tool_id) + '</div><div style="font-size:18px;font-weight:600;line-height:1.35">' + h(t.description) + '</div><div class="sub">S/N ' + h(t.serial_no) + ' · ' + h(t.location) + '</div></div>' +
+    '<div class="card kv">' + rows.filter(function (r) { return r[1] && r[1] !== '—' || ['สอบเทียบล่าสุด', 'ครบกำหนด'].indexOf(r[0]) >= 0; }).map(function (r) { return '<div><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>'; }).join('') + '</div>';
+
+  var use = t.usable ?
+    '<div class="card pad stack"><h2 style="margin:0">บันทึกการใช้งาน</h2><p class="sub">ใช้ตรวจสอบย้อนกลับกรณีผลสอบเทียบครั้งถัดไปเกินเกณฑ์ · ใช้ไปแล้ว ' + t.usageSinceCal + ' ครั้งนับจากสอบเทียบล่าสุด</p>' +
+    '<div class="grid2"><label class="f">ชื่อผู้ใช้งาน<input class="in" id="u-user" autocomplete="name"></label><label class="f">ทะเบียนอากาศยาน<input class="in" id="u-ac" placeholder="เช่น HS-XXX"></label></div>' +
+    '<label class="f">เลขที่ใบสั่งงาน (Job Card)<input class="in" id="u-job"></label>' +
+    '<button type="button" class="btn block" id="u-save">บันทึกการใช้งาน</button></div>' : '';
+
+  var hist = '<div class="card"><div class="pad" style="padding-bottom:8px"><h2 style="margin:0">ประวัติการสอบเทียบ</h2></div><div class="hist">' +
+    (t.history.length ? t.history.map(function (x) {
+      return '<div><span>' + d(x.cal_date) + (x.lab ? ' · ' + h(x.lab) : '') + (x.cert_no ? '<br><span class="sub">ใบรับรอง ' + (x.cert_link ? '<a href="' + h(x.cert_link) + '" target="_blank" rel="noopener">' + h(x.cert_no) + '</a>' : h(x.cert_no)) + '</span>' : '') + '</span>' +
+        '<span style="font-weight:600;color:' + (x.result === 'ผ่าน' ? 'var(--ok)' : 'var(--bad)') + '">' + h(x.result) + '</span></div>';
+    }).join('') : '<div><span class="sub">ยังไม่มีประวัติในระบบ</span></div>') + '</div></div>';
+
+  var today = S.boot.today;
+  var admin = '<details class="admin" id="admin"><summary>สำหรับผู้ควบคุมเครื่องมือ ›</summary><div class="pad stack">' +
+    (S.pin ? '' : '<div class="row" style="flex-wrap:nowrap"><label class="sr" for="pin">รหัสผู้ดูแล</label><input class="in" id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="รหัสผู้ดูแล (PIN)"><button type="button" class="btn" id="pin-ok">ยืนยัน</button></div>') +
+    '<div id="admin-forms"' + (S.pin ? '' : ' hidden') + ' class="stack">' +
+    '<h2 style="margin:0">บันทึกผลการสอบเทียบ</h2>' +
+    '<div class="grid2"><label class="f">วันที่สอบเทียบ<input class="in" id="c-date" type="date" max="' + today + '"></label>' +
+    '<label class="f">ผลการสอบเทียบ<select class="in" id="c-res"><option value="">— เลือก —</option><option>ผ่าน</option><option>ไม่ผ่าน</option><option>เกินเกณฑ์ (OOT)</option></select></label></div>' +
+    '<div class="grid2"><label class="f">เลขที่ใบรับรอง<input class="in" id="c-cert" value=""></label><label class="f">รอบสอบเทียบ (เดือน)<input class="in" id="c-int" type="number" min="1" max="120" value="' + h(t.cal_interval || 12) + '"></label></div>' +
+    '<label class="f">ลิงก์ไฟล์ใบรับรอง (Google Drive)<input class="in" id="c-link" type="url" placeholder="https://drive.google.com/…"></label>' +
+    '<div class="grid2"><label class="f">ห้องปฏิบัติการ<input class="in" id="c-lab" value="' + h(t.cal_lab) + '"></label><label class="f">ผู้ตรวจรับ<input class="in" id="c-by"></label></div>' +
+    '<button type="button" class="btn block" id="c-save">บันทึกผลการสอบเทียบ</button>' +
+    '<hr style="border:0;border-top:1px solid var(--line2);margin:6px 0">' +
+    '<h2 style="margin:0">เปลี่ยนสถานะเครื่องมือ</h2>' +
+    '<div class="seg" role="group" aria-label="สถานะ">' + ['', 'ส่งสอบเทียบ', 'ส่งซ่อม', 'ชำรุด', 'ไม่ต้องสอบเทียบ (NCR)'].map(function (s) {
+      return '<button type="button" data-st="' + h(s) + '" aria-pressed="' + (t.state === s) + '">' + (s || 'ปกติ') + '</button>';
+    }).join('') + '</div>' +
+    '<label class="f">หมายเหตุ (ถ้ามี)<input class="in" id="s-note"></label>' +
+    '<button type="button" class="btn sec block" id="s-save">บันทึกสถานะ</button>' +
+    '<hr style="border:0;border-top:1px solid var(--line2);margin:6px 0">' +
+    '<h2 style="margin:0">จัดการข้อมูลเครื่องมือ</h2>' +
+    '<div class="grid2"><button type="button" class="btn sec" id="t-edit">แก้ไขข้อมูล</button><button type="button" class="btn sec" id="t-retire" style="color:var(--bad);border-color:#E6B3AD">นำออกจากทะเบียน</button></div>' +
+    '<hr style="border:0;border-top:1px solid var(--line2);margin:6px 0">' +
+    '<h2 style="margin:0">รูปเครื่องมือ</h2><p class="sub">ถ่ายให้เห็นทั้งชิ้นและป้าย S/N รูปจะเก็บในโฟลเดอร์ Google Drive ของหน่วยงาน</p>' +
+    '<label class="filebtn">' + (t.photo ? 'ถ่ายรูปใหม่ / เปลี่ยนรูป' : 'ถ่ายรูป / เลือกรูป') + '<input type="file" id="p-file" accept="image/*" capture="environment"></label>' +
+    '</div></div></details>';
+
+  $('#app').innerHTML = '<div class="wrap narrow stack">' +
+    '<div class="row" style="justify-content:space-between"><button type="button" class="btn sec" id="back" style="min-height:42px">‹ ภาพรวม</button><button type="button" class="btn sec" id="rel" style="min-height:42px">รีเฟรช</button></div>' +
+    hero + action + info + use + hist + admin + '</div>';
+
+  $('#back').onclick = function () { go({}); };
+  $('#rel').onclick = function () { showTool(t.tool_id); };
+  if (t.usable) $('#u-save').onclick = function (e) {
+    var btn = e.target; btn.disabled = true;
+    call('apiLogUsage', { id: t.tool_id, user: $('#u-user').value, aircraft: $('#u-ac').value, job: $('#u-job').value })
+      .then(function () { toast('บันทึกการใช้งานแล้ว'); S.list = null; showTool(t.tool_id); })
+      .catch(function (err) { btn.disabled = false; fail(err); });
+  };
+  var pinOk = $('#pin-ok');
+  if (pinOk) {
+    var verify = function () {
+      var v = $('#pin').value; pinOk.disabled = true;
+      call('apiCheckPin', v).then(function () { S.pin = v; $('#admin-forms').hidden = false; pinOk.parentNode.remove(); })
+        .catch(function (err) { pinOk.disabled = false; fail(err); });
+    };
+    pinOk.onclick = verify;
+    $('#pin').onkeydown = function (e) { if (e.key === 'Enter') verify(); };
+  }
+  var chosen = t.state;
+  document.querySelectorAll('[data-st]').forEach(function (b) {
+    b.onclick = function () {
+      chosen = b.getAttribute('data-st');
+      document.querySelectorAll('[data-st]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+    };
+  });
+  $('#c-save').onclick = function (e) {
+    var btn = e.target, res = $('#c-res').value;
+    if ((res === 'ไม่ผ่าน' || res === 'เกินเกณฑ์ (OOT)') && !confirmBox('ผล “' + res + '” จะทำให้เครื่องมือแสดงสถานะห้ามใช้งาน และควรตรวจสอบย้อนกลับงานที่ใช้เครื่องมือนี้ ' + t.usageSinceCal + ' ครั้ง')) return;
+    btn.disabled = true;
+    call('apiRecordCalibration', S.pin, { id: t.tool_id, date: $('#c-date').value, result: res, certNo: $('#c-cert').value, certLink: $('#c-link').value,
+      interval: $('#c-int').value, lab: $('#c-lab').value, by: $('#c-by').value })
+      .then(function (nt) { toast('บันทึกผลการสอบเทียบแล้ว'); S.list = null; renderTool(nt); })
+      .catch(function (err) { btn.disabled = false; fail(err); });
+  };
+  $('#t-edit').onclick = function () { go({ page: 'edit', id: t.tool_id }); };
+  $('#t-retire').onclick = function () { retireTool(t); };
+  $('#p-file').onchange = function (e) {
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    var lbl = e.target.parentNode; lbl.firstChild.textContent = 'กำลังอัปโหลดรูป…';
+    resizeImage(f, 1280).then(function (data) { return call('apiUploadPhoto', S.pin, t.tool_id, data); })
+      .then(function (nt) { toast('บันทึกรูปแล้ว'); S.list = null; renderTool(nt); })
+      .catch(function (err) { lbl.firstChild.textContent = 'ถ่ายรูป / เลือกรูป'; fail(err); });
+  };
+  $('#s-save').onclick = function (e) {
+    var btn = e.target; btn.disabled = true;
+    call('apiSetState', S.pin, t.tool_id, chosen, $('#s-note').value)
+      .then(function (nt) { toast('บันทึกสถานะแล้ว'); S.list = null; renderTool(nt); })
+      .catch(function (err) { btn.disabled = false; fail(err); });
+  };
+}
+function confirmBox(msg) { try { return window.confirm(msg); } catch (e) { return true; } }
+
+/* ------------------------------------------------------------------ หน้าเพิ่ม / แก้ไขเครื่องมือ */
+function pinGate(title, next) {
+  if (S.pin) return next();
+  $('#app').innerHTML = '<div class="wrap narrow stack"><div class="card pad stack"><h1>' + h(title) + '</h1><p class="sub">ใส่รหัสผู้ดูแล (PIN) เพื่อแก้ไขทะเบียนเครื่องมือ</p>' +
+    '<div class="row" style="flex-wrap:nowrap"><label class="sr" for="g-pin">รหัสผู้ดูแล</label><input class="in" id="g-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="รหัสผู้ดูแล (PIN)"><button type="button" class="btn" id="g-ok">ยืนยัน</button></div>' +
+    '<button type="button" class="btn sec" id="g-back">ยกเลิก</button></div></div>';
+  var ok = function () {
+    var v = $('#g-pin').value; $('#g-ok').disabled = true;
+    call('apiCheckPin', v).then(function () { S.pin = v; next(); }).catch(function (err) { $('#g-ok').disabled = false; fail(err); });
+  };
+  $('#g-ok').onclick = ok;
+  $('#g-pin').onkeydown = function (e) { if (e.key === 'Enter') ok(); };
+  $('#g-back').onclick = function () { history.length > 1 ? history.back() : go({}); };
+  setTimeout(function () { var i = $('#g-pin'); if (i) i.focus(); }, 50);
+}
+function showEdit(id) {
+  setNav('');
+  window.scrollTo(0, 0);
+  pinGate(id ? 'แก้ไขข้อมูลเครื่องมือ' : 'เพิ่มเครื่องมือใหม่', function () {
+    $('#app').innerHTML = '<div class="wrap narrow"><div class="loading">กำลังโหลด…</div></div>';
+    Promise.all([ensureList(), id ? call('apiGetTool', id) : Promise.resolve(null)]).then(function (r) {
+      if (id && !r[1]) { toast('ไม่พบเครื่องมือ ' + id, true); return go({}); }
+      renderEdit(r[1]);
+    }).catch(fail);
+  });
+}
+function renderEdit(t) {
+  var isNew = !t; t = t || { cal_interval: 12 };
+  var groups = uniq(S.list.map(function (x) { return x.group; }).concat(['กลุ่มซ่อมบำรุงอากาศยาน', 'กลุ่มอิเล็กทรอนิกส์การบิน']));
+  var locs = uniq(S.list.map(function (x) { return x.location; }));
+  var f = function (id, label, val, extra) {
+    return '<label class="f">' + label + '<input class="in" id="' + id + '" value="' + h(val == null ? '' : val) + '"' + (extra || '') + '></label>';
+  };
+  $('#app').innerHTML = '<div class="wrap narrow stack">' +
+    '<div class="row" style="justify-content:space-between"><button type="button" class="btn sec" id="e-back" style="min-height:42px">‹ ยกเลิก</button></div>' +
+    '<div><h1>' + (isNew ? 'เพิ่มเครื่องมือใหม่' : 'แก้ไขข้อมูล ' + h(t.tool_id)) + '</h1><p class="sub">' +
+    (isNew ? 'เว้น Tool ID ว่างไว้ ระบบจะออกเลขถัดไปให้ตามกลุ่มงาน (M-xxx / A-xxx)' : 'ข้อมูลการสอบเทียบแก้ได้ที่ "บันทึกผลการสอบเทียบ" ในหน้าเครื่องมือ') + '</p></div>' +
+    '<div class="card pad stack">' +
+    (isNew ? f('e-id', 'Tool ID (ไม่บังคับ)', '', ' placeholder="เช่น M-032" autocapitalize="characters"') : '') +
+    '<label class="f">กลุ่มงาน<select class="in" id="e-group">' + groups.map(function (g) { return '<option' + (t.group === g ? ' selected' : '') + '>' + h(g) + '</option>'; }).join('') + '</select></label>' +
+    f('e-desc', 'ชื่อรายการ *', t.description, ' placeholder="เช่น TORQUE WRENCH ยี่ห้อ SNAP-ON ขนาด 10-50 IN.LB"') +
+    '<div class="grid2">' + f('e-model', 'รุ่น (Model)', t.model) + f('e-pn', 'P/N', t.part_no) + '</div>' +
+    '<div class="grid2">' + f('e-sn', 'S/N', t.serial_no) + f('e-asset', 'เลขครุภัณฑ์', t.asset_no) + '</div>' +
+    '<div class="grid2">' + f('e-loc', 'สถานที่ / หน่วยถือครอง', t.location, ' list="e-locs"') + f('e-int', 'รอบสอบเทียบ (เดือน)', t.cal_interval, ' type="number" min="1" max="120"') + '</div>' +
+    '<datalist id="e-locs">' + locs.map(function (l) { return '<option value="' + h(l) + '">'; }).join('') + '</datalist>' +
+    f('e-cost', 'ราคาสอบเทียบ (บาท)', t.cal_cost, ' inputmode="decimal"') +
+    f('e-photo', 'ลิงก์รูปภาพ (ถ้ามี)', t.photo_raw || '', ' type="url" placeholder="https://…"') +
+    '<label class="f">หมายเหตุ<textarea class="in" id="e-rem">' + h(t.remarks) + '</textarea></label>' +
+    '<button type="button" class="btn block" id="e-save">' + (isNew ? 'เพิ่มเครื่องมือ' : 'บันทึกการแก้ไข') + '</button>' +
+    '</div></div>';
+  $('#e-back').onclick = function () { isNew ? go({}) : go({ id: t.tool_id }); };
+  $('#e-save').onclick = function (e) {
+    var btn = e.target; btn.disabled = true;
+    var data = { mode: isNew ? 'add' : 'edit', tool_id: isNew ? $('#e-id').value.trim() : t.tool_id, group: $('#e-group').value,
+      description: $('#e-desc').value, model: $('#e-model').value, part_no: $('#e-pn').value, serial_no: $('#e-sn').value,
+      asset_no: $('#e-asset').value, location: $('#e-loc').value, cal_interval: $('#e-int').value, cal_cost: $('#e-cost').value,
+      photo: $('#e-photo').value, remarks: $('#e-rem').value };
+    call('apiSaveTool', S.pin, data).then(function (nt) {
+      toast((isNew ? 'เพิ่ม ' : 'บันทึก ') + nt.tool_id + ' แล้ว' + (nt.warning ? ' — ' + nt.warning : ''), !!nt.warning);
+      S.list = null; go({ id: nt.tool_id });
+    }).catch(function (err) { btn.disabled = false; fail(err); });
+  };
+}
+function retireTool(t) {
+  var reason = '';
+  try { reason = window.prompt('นำ ' + t.tool_id + ' ออกจากทะเบียน\nข้อมูลจะย้ายไปแท็บ "เครื่องมือที่จำหน่ายแล้ว" ในชีต (ประวัติยังอยู่)\n\nระบุเหตุผล เช่น จำหน่ายครุภัณฑ์ / ชำรุดซ่อมไม่ได้ / ลงทะเบียนซ้ำ', ''); } catch (e) { reason = null; }
+  if (reason === null) return;
+  if (!reason.trim()) { toast('กรุณาระบุเหตุผล', true); return; }
+  call('apiRetireTool', S.pin, t.tool_id, reason).then(function () {
+    toast('นำ ' + t.tool_id + ' ออกจากทะเบียนแล้ว'); S.list = null; go({});
+  }).catch(fail);
+}
+
+/* ------------------------------------------------------------------ หน้าพิมพ์ป้าย */
+function showLabels() {
+  setNav('labels');
+  $('#app').innerHTML = '<div class="wrap"><div class="loading">กำลังโหลดข้อมูล…</div></div>';
+  ensureList().then(renderLabels).catch(fail);
+}
+function renderLabels() {
+  var list = S.list.slice().sort(function (a, b) { return a.tool_id < b.tool_id ? -1 : 1; });
+  var locs = uniq(list.map(function (t) { return t.location; }));
+  $('#app').innerHTML = '<div class="wrap stack">' +
+    '<div><h1>พิมพ์ป้ายติดเครื่องมือ</h1><p class="sub">เลือกเครื่องมือ แล้วกดพิมพ์ — ตั้งค่าเครื่องพิมพ์เป็นขนาดจริง (100%) ไม่ย่อให้พอดีหน้า</p></div>' +
+    '<div class="row"><div class="seg" role="group" aria-label="ชนิดป้าย">' +
+    [['A', 'ป้าย QR ถาวร'], ['B', 'สติกเกอร์วันสอบเทียบ'], ['AB', 'ทั้งสองแบบ']].map(function (m) { return '<button type="button" data-mode="' + m[0] + '" aria-pressed="' + (S.labelMode === m[0]) + '">' + m[1] + '</button>'; }).join('') +
+    '</div></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start">' +
+    '<div class="card"><div class="pad row" style="justify-content:space-between;border-bottom:1px solid var(--line2)"><strong>เลือกเครื่องมือ</strong>' +
+    '<span class="row"><label class="sr" for="ll">สถานที่</label><select class="in" id="ll" style="width:auto;min-height:38px"><option value="">ทุกสถานที่</option>' + locs.map(function (l) { return '<option>' + h(l) + '</option>'; }).join('') + '</select>' +
+    '<button type="button" class="btn sec" id="all" style="min-height:38px">ทั้งหมด</button><button type="button" class="btn sec" id="none" style="min-height:38px">ล้าง</button></span></div>' +
+    '<div class="lab-sel" id="sel">' + list.map(function (t) {
+      return '<label data-loc="' + h(t.location) + '"><input type="checkbox" value="' + h(t.tool_id) + '"' + (S.sel[t.tool_id] ? ' checked' : '') + '><span class="mono" style="font-weight:600;width:52px">' + h(t.tool_id) + '</span><span style="flex:1;min-width:0;font-size:13.5px">' + h(t.description) + '</span></label>';
+    }).join('') + '</div></div>' +
+    '<div class="stack"><div class="row" style="justify-content:space-between"><strong id="cnt"></strong><button type="button" class="btn" id="print">พิมพ์ป้าย</button></div>' +
+    '<div class="sheet" id="preview"></div></div></div></div>';
+  document.querySelectorAll('[data-mode]').forEach(function (b) { b.onclick = function () { S.labelMode = b.getAttribute('data-mode'); renderLabels(); }; });
+  $('#sel').onchange = function (e) { if (e.target.type === 'checkbox') { S.sel[e.target.value] = e.target.checked; preview(); } };
+  var visible = function () { return Array.prototype.slice.call(document.querySelectorAll('#sel label')).filter(function (l) { return !l.hidden; }); };
+  $('#ll').onchange = function (e) { var v = e.target.value; document.querySelectorAll('#sel label').forEach(function (l) { l.hidden = v && l.getAttribute('data-loc') !== v; }); };
+  $('#all').onclick = function () { visible().forEach(function (l) { var c = l.querySelector('input'); c.checked = true; S.sel[c.value] = true; }); preview(); };
+  $('#none').onclick = function () { S.sel = {}; document.querySelectorAll('#sel input').forEach(function (c) { c.checked = false; }); preview(); };
+  $('#print').onclick = function () {
+    var html = labelsHtml();
+    if (!html) { toast('กรุณาเลือกเครื่องมืออย่างน้อย 1 รายการ', true); return; }
+    $('#print-area').innerHTML = html;
+    setTimeout(function () { window.print(); }, 50);
+  };
+  preview();
+}
+function selectedTools() { return S.list.filter(function (t) { return S.sel[t.tool_id]; }).sort(function (a, b) { return a.tool_id < b.tool_id ? -1 : 1; }); }
+function preview() {
+  var n = selectedTools().length;
+  $('#cnt').textContent = 'เลือกแล้ว ' + n + ' รายการ';
+  $('#preview').innerHTML = labelsHtml() || '<span class="sub">ตัวอย่างป้ายจะแสดงที่นี่ (ขนาดจริงเมื่อพิมพ์)</span>';
+}
+function qrSvg(text, mm) {
+  var q = qrcode(0, 'M'); q.addData(text); q.make();
+  var n = q.getModuleCount(), d = '';
+  for (var y = 0; y < n; y++) {
+    var x = 0;
+    while (x < n) {
+      if (q.isDark(y, x)) { var s = x; while (x < n && q.isDark(y, x)) x++; d += 'M' + s + ' ' + y + 'h' + (x - s) + 'v1h-' + (x - s) + 'z'; }
+      else x++;
+    }
+  }
+  return '<svg class="qr" role="img" aria-label="QR Code" width="' + mm + 'mm" height="' + mm + 'mm" viewBox="0 0 ' + n + ' ' + n + '" shape-rendering="crispEdges"><path fill="#000" d="' + d + '"/></svg>';
+}
+function qrUrl(id) {
+  var base = S.boot.qrBase || (location.origin + location.pathname);
+  return base + (base.indexOf('?') >= 0 ? '&' : '?') + 'id=' + encodeURIComponent(id);
+}
+function labelsHtml() {
+  var tools = selectedTools(); if (!tools.length) return '';
+  var mm = S.boot.qrSize || 14, out = '';
+  tools.forEach(function (t) {
+    if (S.labelMode.indexOf('A') >= 0) {
+      out += '<div class="lbl-a" style="height:' + (mm + 2) + 'mm">' + qrSvg(qrUrl(t.tool_id), mm) +
+        '<div><div class="id">' + h(t.tool_id) + '</div><div class="o">DRRAA · TOOL CAL</div><div class="s">S/N ' + h(t.serial_no) + '</div><div class="s">สแกนตรวจสถานะ</div></div></div>';
+    }
+    if (S.labelMode.indexOf('B') >= 0) {
+      out += '<div class="lbl-b"><div class="band"><span>CALIBRATED</span><span>' + h(t.tool_id) + '</span></div>' +
+        '<div class="due">DUE ' + (t.next_due ? h(d(t.next_due, true)) : '__________') + '</div>' +
+        '<div class="cal">CAL ' + (t.last_cal ? h(d(t.last_cal, true)) : '________') + ' · ลงชื่อ ______</div></div>';
+    }
+  });
+  return out;
+}
+
+/* ------------------------------------------------------------------ เริ่มต้น */
+function fail(err) { console.error(err); toast((err && err.message) || 'เกิดข้อผิดพลาด', true); }
+document.querySelectorAll('[data-nav]').forEach(function (b) {
+  b.onclick = function () { var p = b.getAttribute('data-nav'); go(p === 'labels' ? { page: 'labels' } : {}); };
+});
+window.addEventListener('popstate', function (e) {
+  var q = new URLSearchParams(location.search);
+  route(e.state || { id: q.get('id') || '', page: q.get('page') || '' });
+});
+function showSetup(msg) {
+  $('#app').innerHTML = '<div class="wrap narrow stack"><div class="card pad stack"><h1>ตั้งค่าการเชื่อมต่อฐานข้อมูล</h1>' +
+    '<p class="sub">' + h(msg || 'ใส่ลิงก์ Apps Script Web App (ลงท้ายด้วย /exec) ที่ได้จากการ Deploy ในชีตฐานข้อมูล') + '</p>' +
+    '<label class="f">ลิงก์ API<input class="in" id="api" type="url" placeholder="https://script.google.com/macros/s/…/exec" value="' + h(apiUrl()) + '"></label>' +
+    '<button type="button" class="btn" id="api-save">เชื่อมต่อ</button>' +
+    '<p class="sub">ค่านี้เก็บไว้เฉพาะในเบราว์เซอร์นี้ ถ้าจะใช้งานจริงให้ใส่ลิงก์ในตัวแปร API_URL ในไฟล์ index.html เพื่อให้ทุกเครื่องและ QR Code ใช้ได้</p></div></div>';
+  $('#api-save').onclick = function () {
+    var v = $('#api').value.trim();
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(v)) { toast('ลิงก์ต้องอยู่ในรูปแบบ https://script.google.com/macros/s/…/exec', true); return; }
+    try { localStorage.setItem('toolcal_api', v); } catch (e) {}
+    start();
+  };
+}
+function start() {
+  if (!apiUrl()) return showSetup();
+  $('#app').innerHTML = '<div class="loading">กำลังโหลดข้อมูล…</div>';
+  call('apiBoot').then(function (b) {
+    S.boot = b;
+    var init = QS.get('page') === 'edit' ? { page: 'edit', id: INIT_ID } : INIT_ID ? { id: INIT_ID } : (INIT_PAGE ? { page: INIT_PAGE } : {});
+    try { history.replaceState(init, ''); } catch (e) {}
+    route(init);
+  }).catch(function (err) { API_URL ? fail(err) : showSetup(err.message + ' — ตรวจสอบลิงก์อีกครั้ง'); });
+}
+start();
+</script>
+</body>
+</html>
